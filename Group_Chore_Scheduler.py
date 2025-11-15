@@ -80,19 +80,14 @@ class Chore_Scheduler:
         for i in range(max_iterations):
             schedule_list = self.get_neighbors(schedule_copy, )
             evaluation_scores = []
-            for schedule in schedule_list:
-                evaluation_scores.append(evaluation_function(self, schedule))
+            # for schedule in schedule_list:
+            #     evaluation_scores.append(evaluation_function(self, schedule))
             
-            for scores in evaluation_scores:
-                if scores < 100:
-                    evaluation_scores = (probability using delta/temperature)
+            # for scores in evaluation_scores:
+            #     if scores < 100:
+            #         evaluation_scores = (probability using delta/temperature)
 
-            choose a random score in the evaluation score
-
-                
-                
-
-
+            # choose a random score in the evaluation score 
         raise NotImplementedError
 
 
