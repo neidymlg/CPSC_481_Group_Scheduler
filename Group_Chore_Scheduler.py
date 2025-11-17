@@ -80,12 +80,13 @@ class Chore_Scheduler:
         return neighbors
 
     
-    def simulated_annealing(self, max_iterations, initial_temp):
-        schedule_copy = {k: v.copy() for k, v in self.schedule.items()}
+    def simulated_annealing(self, max_iterations: int = 1000, initial_temp: float = 100.0, cooling_rate: float = 0.95):
+        current_schedule = {k: v.copy() for k, v in self.schedule.items()}
+        current_score = self.evaluation_function(current_schedule)
         temp = initial_temp
 
         for i in range(max_iterations):
-            schedule_list = self.get_neighbors(schedule_copy, )
+            neighbors = self.get_neighbors(current_schedule, (self.total_chores * 2))
             evaluation_scores = []
             # for schedule in schedule_list:
             #     evaluation_scores.append(evaluation_function(self, schedule))
