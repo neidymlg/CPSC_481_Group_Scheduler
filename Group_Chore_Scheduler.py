@@ -56,7 +56,7 @@ class Chore_Scheduler:
         return score
         
 
-    def get_neighbors(self, num_swaps = 3):
+    def get_neighbors(self, schedule: Dict[str, List[str]], num_swaps):
         schedule = self.schedule
         neighbors = []
         user_names = list(schedule.keys())
@@ -81,7 +81,7 @@ class Chore_Scheduler:
 
     
     def simulated_annealing(self, max_iterations, initial_temp):
-        schedule_copy = self.schedule
+        schedule_copy = {k: v.copy() for k, v in self.schedule.items()}
         temp = initial_temp
 
         for i in range(max_iterations):
