@@ -55,22 +55,29 @@ class Chore_Scheduler:
         # decrease score if overloaded, increase score if not overloaded
         return score
         
-        
 
+    def get_neighbors(self, num_swaps = 3):
+        schedule = self.schedule
+        neighbors = []
+        user_names = list(schedule.keys())
 
-
-
-    def get_neighbors(self, schedule, pairs):
-        schedule_copy = schedule.copy()
-        schedule_list = {}
-
-        for i in range(pairs):
+        for i in range(num_swaps):
+            schedule_copy = {k: v.copy() for k, v in schedule.items()}
             strategy = random.choice(['reassign', 'swap'])
-            user_1, user_2 = random.sample(self.users.name, 2)
+            user_1, user_2 = random.sample(user_names, 2)
 
 
-        return schedule_list
-        raise NotImplementedError
+            if strategy == 'reassign' and len(schedule_copy[user_1]) > 0:
+                chore_i = random.randint(0, len(schedule_copy[user_1]) - 1)
+                chore = schedule_copy[user_1].pop(chore_i)
+                schedule_copy[user_2].append(chore)
+            else:
+                id_1 = random.randint(0, len(schedule_copy[user_1]) - 1)
+                id_2 = random.randint(0, len(schedule_copy[user_2]) - 1)
+                schedule_copy[user_1][id_1], schedule_copy[user_2][id_2] = schedule_copy[user_2][id_2], schedule_copy[user_1][id_1]
+
+            neighbors.append(schedule_copy)
+        return neighbors
 
     
     def simulated_annealing(self, max_iterations, initial_temp):
