@@ -44,20 +44,19 @@ class Chore_Scheduler:
 
     def evaluation_function(self, schedule):
         score = 100
-        user_copy = {user.name: user for user in self.users}
+        user_name = {user.name: user for user in self.users}
 
-        for chore_name, person_name in schedule.items():
-            user_copy[person_name] += 1
+        # for chore_name, person_name in schedule.items():
+        #     user_copy[person_name] += 1
 
         # get the amount of chores a user can do and check if there is 
         # more than usual over everywhere (unless everyone is overloaded),
         # if less than usual it's okay, if no one is overloaded except one penalize
         # decrease score if overloaded, increase score if not overloaded
-        return score
+        raise NotImplementedError
         
 
     def get_neighbors(self, schedule: Dict[str, List[str]], num_swaps):
-        schedule = self.schedule
         neighbors = []
         user_names = list(schedule.keys())
 
@@ -83,21 +82,42 @@ class Chore_Scheduler:
     def simulated_annealing(self, max_iterations: int = 1000, initial_temp: float = 100.0, cooling_rate: float = 0.95):
         current_schedule = {k: v.copy() for k, v in self.schedule.items()}
         current_score = self.evaluation_function(current_schedule)
+
+        best_schedule = current_schedule
+        best_score = current_score
+        
         temp = initial_temp
 
         for i in range(max_iterations):
             neighbors = self.get_neighbors(current_schedule, (self.total_chores * 2))
             evaluation_scores = []
-            # for schedule in schedule_list:
-            #     evaluation_scores.append(evaluation_function(self, schedule))
-            
-            # for scores in evaluation_scores:
-            #     if scores < 100:
-            #         evaluation_scores = (probability using delta/temperature)
 
-            # choose a random score in the evaluation score 
-        raise NotImplementedError
+            neighbor_id = random.randint(0, len(neighbors) - 1)
+            neighbor_schedule = neighbors.pop(neighbor_id)
+            neighbor_score = evaluation_scores(neighbor_schedule)
 
+            delta = neighbor_score - current_score
+            if delta > 0:
+                current_schedule =  neighbor_schedule
+                current_score = neighbor_score
+            else:
+                #possible bad choice
+                acceptance_probability = 0
+                if temp > 0:
+                    acceptance_probability = math.exp(delta/temp)
+                if random.random() < acceptance_probability:
+                    current_schedule =  neighbor_schedule
+                    current_score = neighbor_score
+                #else no change to current schedule
+
+        if current_score < best_score:
+            best_schedule = current_schedule
+            best_score = best_score
+        
+        temp *= cooling_rate
+
+        return best_schedule, best_score
+                
 
 
 if __name__ == "__main__":
