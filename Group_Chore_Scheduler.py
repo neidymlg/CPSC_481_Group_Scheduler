@@ -20,6 +20,10 @@ class User:
         self.name = name
         self.max_chores = max_chores
         
+def jains_divide(numerator, denominator):
+        if denominator == 0:
+            return 1.0
+        return numerator/denominator
 
 class Chore_Scheduler:
     def __init__(self, chores: List[Chore], users: List[User]):
@@ -28,7 +32,7 @@ class Chore_Scheduler:
         self.users = sorted(users, key=lambda x: x.max_chores, reverse=True) 
         self.total_chores = sum(chore.amount for chore in self.chores)
         self.schedule = self.create_initial_schedule()
-
+    
     def create_initial_schedule(self) -> Dict[str, List[str]]:
             schedule = {user.name: [] for user in self.users}
             user_amount = len(self.users)
@@ -47,33 +51,39 @@ class Chore_Scheduler:
             return schedule
 
 
-    def jains_fairness_index(values: List):
+    def jains_fairness_index(self, values: np.ndarray) -> float:
         n = len(values)
         numerator = np.sum(values) ** 2
         denominator = n * np.sum(values ** 2)
-        return numerator / denominator
+        return jains_divide(numerator, denominator)
 
 
     def evaluation_function(self, schedule):
-        score = 100
         user_info = {user.name: user for user in self.users}
-        ratios = []
-        penalty - 0
 
-        for user_name, chores in schedule.items():
-            num_chores = len(chores)
-            max_chores = user_info[user_name].max_chores
-            ratios.append(num_chores/max_chores)
+        user_names = list(schedule.keys())
+        chore_counts = np.array([len(schedule[name]) for name in user_names])
+        user_max_chores = np.array([user_info[name].max_chores for name in user_names])
+        ratios = chore_counts / user_max_chores
+        fairness_score = self.jains_fairness_index(ratios)
+        score = fairness_score * 100.0
+
+        # overload_mask = 
+        # underload_mask = ratios < ((self.total_chores / len(user_names)) / 10)
+        # overload_count = np.sum(ratios > 1.0)
+        # underload_count = np.sum(ratios < 0.9)
+
+        # #bonus for equal distributions
+        # if overload_count == len(ratios):
+        #     score += 1
         
-        np.mean(chore_ratio)
-        # for chore_name, person_name in schedule.items():
-        #     user_copy[person_name] += 1
+        # if underload_count > (self.total_chores/7) and fairness_score == 1.0:
+        #     score += 1
+        
+        # if 
+            
 
-        # get the amount of chores a user can do and check if there is 
-        # more than usual over everywhere (unless everyone is overloaded),
-        # if less than usual it's okay, if no one is overloaded except one penalize
-        # decrease score if overloaded, increase score if not overloaded
-        raise NotImplementedError
+        return score
         
 
     def get_neighbors(self, schedule: Dict[str, List[str]], num_swaps):
@@ -82,11 +92,12 @@ class Chore_Scheduler:
 
         for _ in range(num_swaps):
             schedule_copy = copy.deepcopy(schedule)
-            strategy = random.choice(['reassign', 'swap'])
+            # strategy = random.choice(['reassign', 'swap'])
+            strategy = 'reassign'
             user_1, user_2 = random.sample(user_names, 2)
 
 
-            if strategy == 'reassign' and len(schedule_copy[user_1]) > 0:
+            if strategy == 'reassign' and len(schedule_copy[user_1]) > 1:
                 chore_i = random.randint(0, len(schedule_copy[user_1]) - 1)
                 chore = schedule_copy[user_1].pop(chore_i)
                 schedule_copy[user_2].append(chore)
@@ -100,7 +111,7 @@ class Chore_Scheduler:
 
     
     def simulated_annealing(self, max_iterations: int = 1000, initial_temp: float = 100.0, cooling_rate: float = 0.95):
-        current_schedule = {k: v.copy() for k, v in self.schedule.items()}
+        current_schedule = copy.deepcopy(self.schedule)
         current_score = self.evaluation_function(current_schedule)
 
         best_schedule = current_schedule
@@ -114,7 +125,7 @@ class Chore_Scheduler:
 
             neighbor_id = random.randint(0, len(neighbors) - 1)
             neighbor_schedule = neighbors.pop(neighbor_id)
-            neighbor_score = evaluation_scores(neighbor_schedule)
+            neighbor_score = self.evaluation_function(neighbor_schedule)
 
             delta = neighbor_score - current_score
             if delta > 0:
@@ -130,11 +141,11 @@ class Chore_Scheduler:
                     current_score = neighbor_score
                 #else no change to current schedule
 
-        if current_score < best_score:
-            best_schedule = current_schedule
-            best_score = best_score
-        
-        temp *= cooling_rate
+            if current_score > best_score:
+                best_schedule = current_schedule
+                best_score = current_score
+            
+            temp *= cooling_rate
 
         return best_schedule, best_score
                 
@@ -142,9 +153,12 @@ class Chore_Scheduler:
 
 if __name__ == "__main__":
 
-    chore_list = list([Chore("dishes", 3), Chore("cooking", 4), Chore("trash", 1), Chore("mopping", 2)])
-    user_list = list([User("User_1", max_chores=2), User("User_2", max_chores=8)])
+    chore_list = list([Chore("dishes", 1), Chore("cooking", 1), Chore("trash", 1), Chore("mopping", 1)])
+    user_list = list([User("User_1", max_chores=5), User("User_2", max_chores=10)])
     cs = Chore_Scheduler(chore_list, user_list)
+    schedule, score = cs.simulated_annealing()
+    print(f"{schedule=}")
+    print(f"{score=}")
     # user_info = [
     #     {'name': 'User_1', 'maximum_chores': 5, 'difficulty': [0, 4, 2, 0], 'hated_chores':['cooking'], 'preferred_chores':['dishes']},
     #     {'name': 'User_2', 'maximum_chores': 5, 'difficulty': [1, 1, 0, 1], 'hated_chores':['trash'], 'preferred_chores':['cooking']}
