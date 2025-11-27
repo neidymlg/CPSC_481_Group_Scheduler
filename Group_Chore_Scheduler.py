@@ -61,30 +61,39 @@ class Chore_Scheduler:
 
     def evaluation_function(self, schedule):
         user_info = {user.name: user for user in self.users}
+        user_names = list(schedule.keys())
 
         # --------------Chore Capacity and Fairness of Distribution-------------
-        user_names = list(schedule.keys())
         chore_counts = np.array([len(schedule[name]) for name in user_names])
         user_max_chores = np.array([user_info[name].max_chores for name in user_names])
         ratios = chore_counts / user_max_chores
         fairness_score = self.jains_fairness_index(ratios)
         score = fairness_score * 100.0
 
+
+        avg_ratio = np.mean(ratios)
+        underload_mask = ratios < (avg_ratio * 0.5)
         overload_mask = ratios > 1.0
         overload_count = np.sum(overload_mask)
+        underload_count = np.sum(underload_mask)
 
         #penalty if only some are overloaded 
         if overload_count > 0:
-            if overload_count == len(ratios) and fairness_score > 0.90:
-                decimal_score = ((fairness_score*100)%10)
-                if decimal_score < 1:
-                    decimal_score = 10
-                score += min(decimal_score, 10)
+            worst_overload = np.max(ratios[overload_mask])
+            overload_amount = (worst_overload - 1.0) * 5
+            if overload_count == len(ratios) and fairness_score > 0.95:
+                score += min(overload_amount, 10)
             else:
                 worst_overload = np.max(ratios[overload_mask])
-                score -= min(worst_overload * 3, 10)
-        else:
-            score += min(fairness_score*10,10)
+                score -= min(overload_amount, 10)
+        if underload_count > 0:
+            worst_underload = np.min(ratios[underload_mask])
+            underload_amount = (avg_ratio * 0.5) - worst_underload
+            if underload_count == len(ratios) and fairness_score > 0.95:
+                score += min(underload_amount * 10, 10)
+            else:
+                score -= min(underload_amount * 10, 10)
+    
 
         for user_name in user_names:
             # --------------User Preference-------------
@@ -92,18 +101,14 @@ class Chore_Scheduler:
             assigned_chores = schedule[user_name]
             assigned_index = [self.chore_index[chore] for chore in assigned_chores]
 
-            score += sum(-3 for id in assigned_index if id in user.hated_chores)
+            score += (sum(-1 for id in assigned_index if id in user.hated_chores)) * 2
             score += sum(1 for id in assigned_index if id in user.loved_chores)
 
 
-            # --------------Individual Difficulty-------------
+            # --------------Individual Difficulty-------------     
             if user.difficulty:
                 total_difficulty = sum(user.difficulty[id] for id in assigned_index)
-                avg_difficulty = total_difficulty / len(assigned_chores)
-                score += (avg_difficulty * 0.5)
-
-
-
+                score += max(min(total_difficulty * 0.5, 10), -10)
 
         return score
         
@@ -173,9 +178,9 @@ class Chore_Scheduler:
 
 if __name__ == "__main__":
 
-    chore_list = list([Chore("dishes", 3), Chore("cooking", 4), Chore("trash", 1), Chore("mopping", 2)])
-    user_list = list([User("User_1", max_chores=5, difficulty=[-2, -1, 1, 0], hated_chores=[1,2], loved_chores=[0,3]), 
-                      User("User_2", max_chores=5, difficulty=[3, 10, -2, 10], hated_chores=[], loved_chores=[1,3])])
+    chore_list = list([Chore("dishes", 3), Chore("cooking", 4), Chore("trash", 1), Chore("mopping", 3)])
+    user_list = list([User("User_1", max_chores=5, difficulty=[2, 5, 10, 1], hated_chores=[1], loved_chores=[0,3]), 
+                      User("User_2", max_chores=5, difficulty=[0,-5,0,0], hated_chores=[], loved_chores=[1])])
     cs = Chore_Scheduler(chore_list, user_list)
     schedule, score = cs.simulated_annealing()
     print(f"{schedule=}")
