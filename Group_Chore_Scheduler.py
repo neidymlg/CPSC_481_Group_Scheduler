@@ -20,41 +20,44 @@ class User:
         self.hated_chores = hated_chores
         self.loved_chores = loved_chores
         
-def jains_divide(numerator, denominator):
-        if denominator == 0:
-            return 1.0
-        return numerator/denominator
+def safe_divide(numerator, denominator):
+    if denominator == 0:
+        return 0.0
+    return numerator/denominator
 
 class Chore_Scheduler:
     def __init__(self, chores: List[Chore], users: List[User]):
         self.chores = chores
+        self.chore_index = {chore.name: i for i, chore in enumerate(chores)}
         #rearranges users so users with more chore capacity will get more chores when calling create_initial_schedule 
         self.users = sorted(users, key=lambda x: x.max_chores, reverse=True) 
         self.total_chores = sum(chore.amount for chore in self.chores)
         self.schedule = self.create_initial_schedule()
     
     def create_initial_schedule(self) -> Dict[str, List[str]]:
-            schedule = {user.name: [] for user in self.users}
-            user_amount = len(self.users)
+        schedule = {user.name: [] for user in self.users}
+        user_amount = len(self.users)
 
-            #gets all chore names, gets all chore amount
-            #repeats chores (Ex: (Dishes, 2) -> [Dishes, Dishes])
-            chore_names = np.array([chore.name for chore in self.chores], dtype=object)
-            chore_amounts = np.array([chore.amount for chore in self.chores], dtype=int)
-            repeated_chore_list = np.repeat(chore_names, chore_amounts)  
+        #gets all chore names, gets all chore amount
+        #repeats chores (Ex: (Dishes, 2) -> [Dishes, Dishes])
+        chore_names = np.array([chore.name for chore in self.chores], dtype=object)
+        chore_amounts = np.array([chore.amount for chore in self.chores], dtype=int)
+        repeated_chore_list = np.repeat(chore_names, chore_amounts)  
 
-            #distributes chores to be half and half (or approximately)
-            for i, chore_name in enumerate(repeated_chore_list):
-                user = self.users[i % user_amount]
-                schedule[user.name].append(chore_name)
+        #distributes chores to be half and half (or approximately)
+        for i, chore_name in enumerate(repeated_chore_list):
+            user = self.users[i % user_amount]
+            schedule[user.name].append(chore_name)
 
-            return schedule
+        return schedule
 
     def jains_fairness_index(self, values: np.ndarray) -> float:
         n = len(values)
         numerator = np.sum(values) ** 2
         denominator = n * np.sum(values ** 2)
-        return jains_divide(numerator, denominator)
+        if denominator == 0:
+            return 1.0
+        return numerator/denominator
 
     def evaluation_function(self, schedule):
         user_info = {user.name: user for user in self.users}
@@ -83,12 +86,23 @@ class Chore_Scheduler:
         else:
             score += min(fairness_score*10,10)
 
-        # for user_name in user_names:
-        #     # --------------User Preference-------------
-        #     user = user_info[user_name]
-        #     assigned_chores = schedule[user_name]
-        #     assigned_iid = [self.chore_name]
-        #     # --------------Individual Difficulty-------------
+        for user_name in user_names:
+            # --------------User Preference-------------
+            user = user_info[user_name]
+            assigned_chores = schedule[user_name]
+            assigned_index = [self.chore_index[chore] for chore in assigned_chores]
+
+            score += sum(-3 for id in assigned_index if id in user.hated_chores)
+            score += sum(1 for id in assigned_index if id in user.loved_chores)
+
+
+            # --------------Individual Difficulty-------------
+            if user.difficulty:
+                total_difficulty = sum(user.difficulty[id] for id in assigned_index)
+                avg_difficulty = total_difficulty / len(assigned_chores)
+                score += (avg_difficulty * 0.5)
+
+
 
 
         return score
@@ -101,7 +115,6 @@ class Chore_Scheduler:
         for _ in range(num_swaps):
             schedule_copy = copy.deepcopy(schedule)
             strategy = random.choice(['reassign', 'swap'])
-            strategy = 'reassign'
             user_1, user_2 = random.sample(user_names, 2)
 
 
@@ -161,7 +174,8 @@ class Chore_Scheduler:
 if __name__ == "__main__":
 
     chore_list = list([Chore("dishes", 3), Chore("cooking", 4), Chore("trash", 1), Chore("mopping", 2)])
-    user_list = list([User("User_1", max_chores=5, difficulty = [0,0,0,0], hated_chores=[1,2], loved_chores=[0,3]), User("User_2", max_chores=5, hated_chores=[], loved_chores=[0,1])])
+    user_list = list([User("User_1", max_chores=5, difficulty=[-2, -1, 1, 0], hated_chores=[1,2], loved_chores=[0,3]), 
+                      User("User_2", max_chores=5, difficulty=[3, 10, -2, 10], hated_chores=[], loved_chores=[1,3])])
     cs = Chore_Scheduler(chore_list, user_list)
     schedule, score = cs.simulated_annealing()
     print(f"{schedule=}")
