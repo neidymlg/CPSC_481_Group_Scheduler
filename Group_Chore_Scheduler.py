@@ -60,59 +60,49 @@ class Chore_Scheduler:
         return numerator/denominator
 
     def evaluation_function(self, schedule):
+        #weights
+        W_LOVE = 5.0
+        W_HATE = -5.0
+        W_DIFFICULTY = 3.0
+
         user_info = {user.name: user for user in self.users}
         user_names = list(schedule.keys())
 
-        # --------------Chore Capacity and Fairness of Distribution-------------
         chore_counts = np.array([len(schedule[name]) for name in user_names])
         user_max_chores = np.array([user_info[name].max_chores for name in user_names])
+
+        # ---------- Distribution of Fairness -------------
         ratios = chore_counts / user_max_chores
         fairness_score = self.jains_fairness_index(ratios)
         score = fairness_score * 100.0
 
-
-        avg_ratio = np.mean(ratios)
-        underload_mask = ratios < (avg_ratio * 0.5)
-        overload_mask = ratios > 1.0
-        overload_count = np.sum(overload_mask)
-        underload_count = np.sum(underload_mask)
-
-        #penalty if only some are overloaded 
-        if overload_count > 0:
-            worst_overload = np.max(ratios[overload_mask])
-            overload_amount = (worst_overload - 1.0) * 5
-            if overload_count == len(ratios) and fairness_score > 0.95:
-                score += min(overload_amount, 10)
-            else:
-                worst_overload = np.max(ratios[overload_mask])
-                score -= min(overload_amount, 10)
-        if underload_count > 0:
-            worst_underload = np.min(ratios[underload_mask])
-            underload_amount = (avg_ratio * 0.5) - worst_underload
-            if underload_count == len(ratios) and fairness_score > 0.95:
-                score += min(underload_amount * 10, 10)
-            else:
-                score -= min(underload_amount * 10, 10)
-    
+        # ---------- Overload Penalty ------------- 
+        if np.sum(ratios > 1.0) > 0 and fairness_score < 1.0:
+            score -= (np.sum(np.maximum(0, ratios - 1.0))) * (1 + (1-fairness_score) * 1000)
 
         for user_name in user_names:
-            # --------------User Preference-------------
             user = user_info[user_name]
             assigned_chores = schedule[user_name]
-            assigned_index = [self.chore_index[chore] for chore in assigned_chores]
+            assigned_indices = [self.chore_index[chore] for chore in assigned_chores]
 
-            score += (sum(-1 for id in assigned_index if id in user.hated_chores)) * 2
-            score += sum(1 for id in assigned_index if id in user.loved_chores)
-
-
-            # --------------Individual Difficulty-------------     
+            # ---------- Preferences Bonus / Penalty -------------
+            loved_amount = sum(1 for id in assigned_indices if id in user.loved_chores)
+            hated_amount = sum(1 for id in assigned_indices if id in user.hated_chores)
+            
+            diff_score = 0
             if user.difficulty:
-                total_difficulty = sum(user.difficulty[id] for id in assigned_index)
-                score += max(min(total_difficulty * 0.5, 10), -10)
+                diff_sum = sum(user.difficulty[id] for id in assigned_indices)
+                
+                if diff_sum < 0:
+                    scaled_diff = diff_sum / W_DIFFICULTY
+                    diff_score = -1 * (scaled_diff ** 2)
+                else:
+                    diff_score = diff_sum * 1.0
+
+            score += ((loved_amount * W_LOVE) + (hated_amount * W_HATE) + diff_score)
 
         return score
         
-
     def get_neighbors(self, schedule: Dict[str, List[str]], num_swaps):
         neighbors = []
         user_names = list(schedule.keys())
@@ -178,9 +168,9 @@ class Chore_Scheduler:
 
 if __name__ == "__main__":
 
-    chore_list = list([Chore("dishes", 3), Chore("cooking", 4), Chore("trash", 1), Chore("mopping", 3)])
-    user_list = list([User("User_1", max_chores=5, difficulty=[2, 5, 10, 1], hated_chores=[1], loved_chores=[0,3]), 
-                      User("User_2", max_chores=5, difficulty=[0,-5,0,0], hated_chores=[], loved_chores=[1])])
+    chore_list = list([Chore("dishes", 3), Chore("cooking", 5), Chore("trash", 2), Chore("mopping", 3)])
+    user_list = list([User("User_1", max_chores=4, difficulty=[2, -5, 4, -1], hated_chores=[1], loved_chores=[0,3]), 
+                      User("User_2", max_chores=4, difficulty=[-1,-9,-2,0], hated_chores=[], loved_chores=[2])])
     cs = Chore_Scheduler(chore_list, user_list)
     schedule, score = cs.simulated_annealing()
     print(f"{schedule=}")
