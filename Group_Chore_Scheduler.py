@@ -1,5 +1,6 @@
 import random
 import math
+from flask import Flask, request, jsonify
 from typing import List, Dict, Tuple
 
 class Chore:
@@ -100,11 +101,11 @@ class Chore_Scheduler:
 
 
 
-if __name__ == "__main__":
+#if __name__ == "__main__":
 
-    chore_list = list([Chore("dishes", 3), Chore("cooking", 4), Chore("trash", 1), Chore("mopping", 2)])
-    user_list = list([User("User_1", max_chores=2), User("User_2", max_chores=8)])
-    cs = Chore_Scheduler(chore_list, user_list)
+#    chore_list = list([Chore("dishes", 3), Chore("cooking", 4), Chore("trash", 1), Chore("mopping", 2)])
+#   user_list = list([User("User_1", max_chores=2), User("User_2", max_chores=8)])
+#    cs = Chore_Scheduler(chore_list, user_list)
     # user_info = [
     #     {'name': 'User_1', 'maximum_chores': 5, 'difficulty': [0, 4, 2, 0], 'hated_chores':['cooking'], 'preferred_chores':['dishes']},
     #     {'name': 'User_2', 'maximum_chores': 5, 'difficulty': [1, 1, 0, 1], 'hated_chores':['trash'], 'preferred_chores':['cooking']}
@@ -119,4 +120,27 @@ if __name__ == "__main__":
     # cs = Chore_Scheduler(user_info=user_info, chores=chores, max_chores=max_chores)
 
 
-    
+app = Flask(__name__)
+
+@app.post("/schedule")
+def make_schedule():
+    data = request.get_json()
+
+    chores = [
+       Chore(c["name"], int(c["amount"]))
+        for c in data.get("chores", [])
+       if c.get("name") and int(c.get("amount", 0)) > 0
+    ]
+
+    users = [
+       User(u["name"], int(u["max_chores"]))
+       for u in data.get("users", [])
+       if u.get("name")
+    ]
+
+    scheduler = Chore_Scheduler(chores, users)
+    return jsonify({"schedule": scheduler.schedule})
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
