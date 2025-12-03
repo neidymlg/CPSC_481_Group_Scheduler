@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chore Scheduler</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- INPUT VIEW -->
+    <div id="input-view">
+      <h1>Chore Scheduler</h1>
+
+      <div class="layout">
+        <!-- Left side: inputs -->
+        <div class="left-pane">
+          <section class="card">
+            <h2>Users</h2>
+            <p class="hint">
+              Format: <code>Name, maxChores</code> (example: <code>User_1, 5</code>)
+            </p>
+            <div class="row">
+              <input
+                id="user-input"
+                type="text"
+                placeholder="Alice, 5"
+              />
+              <button type="button" id="add-user-btn" class="secondary-btn">
+                Add User
+              </button>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2>Chores</h2>
+            <p class="hint">
+              Format: <code>Name, amount</code> (example: <code>dishes, 3</code>)
+            </p>
+            <div class="row">
+              <input
+                id="chore-input"
+                type="text"
+                placeholder="Dishes, 3"
+              />
+              <button type="button" id="add-chore-btn" class="secondary-btn">
+                Add Chore
+              </button>
+            </div>
+          </section>
+
+          <button id="generate-btn" class="primary-btn">
+            Generate Schedule
+          </button>
+
+          <section id="error-message" class="error" style="display:none;"></section>
+        </div>
+
+        <!-- Right side: live lists -->
+        <div class="right-pane">
+          <section class="card">
+            <h2>Current Users</h2>
+            <p class="hint">Click a user to remove.</p>
+            <ul id="users-list" class="item-list"></ul>
+          </section>
+
+          <section class="card">
+            <h2>Current Chores</h2>
+            <p class="hint">Click a chore to remove.</p>
+            <ul id="chores-list" class="item-list"></ul>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCHEDULE VIEW -->
+    <div id="schedule-view" style="display:none;">
+      <h1>Generated Schedule</h1>
+
+      <section class="card">
+        <div id="schedule-output"></div>
+      </section>
+
+      <button id="back-btn" class="secondary-btn">
+        ← Back to Input
+      </button>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
