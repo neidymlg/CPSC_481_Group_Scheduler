@@ -281,23 +281,23 @@ class Chore_Scheduler:
 
 
 #if __name__ == "__main__":
-
-#    chore_list = list([Chore("dishes", 3), Chore("cooking", 4), Chore("trash", 1), Chore("mopping", 2)])
-#   user_list = list([User("User_1", max_chores=2), User("User_2", max_chores=8)])
-#    cs = Chore_Scheduler(chore_list, user_list)
-    # user_info = [
-    #     {'name': 'User_1', 'maximum_chores': 5, 'difficulty': [0, 4, 2, 0], 'hated_chores':['cooking'], 'preferred_chores':['dishes']},
-    #     {'name': 'User_2', 'maximum_chores': 5, 'difficulty': [1, 1, 0, 1], 'hated_chores':['trash'], 'preferred_chores':['cooking']}
-    # ]
-    # chores = [
-    #     {"dishes": 3},
-    #     {"cooking": 4},
-    #     {"trash": 1},
-    #     {"mopping": 2}
-    # ]
-    # max_chores = 10
-    # cs = Chore_Scheduler(user_info=user_info, chores=chores, max_chores=max_chores)
-
+    # chore_list = list([Chore("dishes", 5), Chore("cooking", 10), Chore("trash", 1), Chore("mopping", 1)])
+    # user_list = list([User("User_1", max_chores=5, difficulty=[10, 0, 0, 0], hated_chores=[1], loved_chores=[0]), 
+    #                   User("User_2", max_chores=4, difficulty=[0, 0,0, 0], hated_chores=[0], loved_chores=[1])])
+    # cs = Chore_Scheduler(chore_list, user_list)
+    # schedule, score = cs.simulated_annealing()
+    # quality = cs.get_quality_score(schedule)
+    # print(f"{schedule=}")
+    # print(f"Optimization Score: {score:.2f}")
+    # print()
+    # print(f"\tQuality Score: {quality['score']}/100 - {quality['score_results']}")
+    # print(f"\tSituation: {quality['situation']}")
+    # print(f"\tCapacity Ratio: {quality['capacity_ratio']}x")
+    # print()
+    # print("Individual Workloads:")
+    # for user_name, load in quality['user_loads'].items():
+    #     print(f"\t{user_name}: {load['assigned']}/{load['capacity']} chores "
+    #           f"\t({load['percentage']}% capacity, ratio={load['ratio']})")
 
 app = Flask(__name__)
 
