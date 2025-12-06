@@ -17,11 +17,19 @@ class User:
                 loved_chores: List[int] = None):
         self.name = name
         self.max_chores = max_chores
-        self.difficulty = difficulty
-        self.hated_chores = hated_chores
-        self.loved_chores = loved_chores
+        if difficulty is None or len(difficulty) == 0 or all(d == 0 for d in difficulty):
+            self.difficulty = None
+        else:
+            self.difficulty = difficulty
+        if hated_chores is None or len(hated_chores) == 0:
+            self.hated_chores = []
+        else:
+            self.hated_chores = hated_chores
+        if loved_chores is None or len(loved_chores) == 0:
+            self.loved_chores = []
+        else:
+            self.loved_chores = loved_chores
 
-#REVIEW: Go over code for unsafe negatives---------------------------------------------------------------------------------------------
 def safe_divide(numerator, denominator):
     if denominator == 0:
         return 0.0
@@ -29,6 +37,12 @@ def safe_divide(numerator, denominator):
 
 class Chore_Scheduler:
     def __init__(self, chores: List[Chore], users: List[User]):
+        if not users or len(users) == 0:
+            raise ValueError("Cannot create schedule with no users")
+        
+        if not chores or len(chores) == 0:
+            raise ValueError("Cannot create schedule with no chores")
+        
         self.chores = chores
         self.chore_index = {chore.name: i for i, chore in enumerate(chores)}
         #rearranges users so users with more chore capacity will get more chores when calling create_initial_schedule 
@@ -65,7 +79,7 @@ class Chore_Scheduler:
         return numerator/denominator
 
     #evaluates schedule scores
-    def evaluation_function(self, schedule):
+    def evaluation_function(self, schedule) -> float:
         #weights
         W_LOVE = 5.0
         W_HATE = -5.0
@@ -79,7 +93,14 @@ class Chore_Scheduler:
 
         # ---------- Distribution of Fairness -------------
         #big penalty
-        ratios = chore_counts / user_max_chores
+
+        ratios = np.divide(
+            chore_counts,
+            user_max_chores,
+            out=np.zeros_like(chore_counts, dtype=float),
+            where=user_max_chores != 0
+        )
+
         fairness_score = self.jains_fairness_index(ratios)
         score = fairness_score * 100.0
 
@@ -115,24 +136,26 @@ class Chore_Scheduler:
         return score
 
     #changes schedule pairs by swapping or giving chores   
-    def get_neighbors(self, schedule: Dict[str, List[str]], num_swaps):
+    def get_neighbors(self, schedule: Dict[str, List[str]], num_swaps) -> List:
         neighbors = []
         user_names = list(schedule.keys())
 
+        if len(user_names) < 2:
+            return [schedule]
+        
         for _ in range(num_swaps):
             schedule_copy = copy.deepcopy(schedule)
             strategy = random.choice(['reassign', 'swap'])
             user_1, user_2 = random.sample(user_names, 2)
 
-
-            if strategy == 'reassign' and len(schedule_copy[user_1]) > 1:
-                chore_i = random.randint(0, len(schedule_copy[user_1]) - 1)
-                chore = schedule_copy[user_1].pop(chore_i)
-                schedule_copy[user_2].append(chore)
-            else:
+            if len(schedule_copy[user_1]) > 0 and len(schedule_copy[user_2]) > 0 and strategy == 'swap':
                 id_1 = random.randint(0, len(schedule_copy[user_1]) - 1)
                 id_2 = random.randint(0, len(schedule_copy[user_2]) - 1)
                 schedule_copy[user_1][id_1], schedule_copy[user_2][id_2] = schedule_copy[user_2][id_2], schedule_copy[user_1][id_1]
+            elif len(schedule_copy[user_1]) > 0:
+                chore_i = random.randint(0, len(schedule_copy[user_1]) - 1)
+                chore = schedule_copy[user_1].pop(chore_i)
+                schedule_copy[user_2].append(chore)
 
             neighbors.append(schedule_copy)
         return neighbors
@@ -179,77 +202,147 @@ class Chore_Scheduler:
 
         return best_schedule, best_score
     
-
-    # REVIEW PREFERENCE AND DIFFICULTY SCORES (For difficulty scores, a large deviation in negative is bad, for positive it is good, use std for lower penalty, will need to change)     
-    def get_quality_score(self, schedule) -> Dict:
+    #calculates the mean of the user's chores if they are based on best difficulty
+    def calculate_ideal_difficulty(self, schedule) -> Dict[str, float]:
+        user_info = {user.name: user for user in self.users}
+        user_names = list(schedule.keys())
+        
+        ideal_averages = {}
+        
+        for user_name in user_names:
+            user = user_info[user_name]
+            assigned_chores = schedule[user_name]
+            num_assigned = len(assigned_chores)
+            
+            # if there is nothing in difficulty, write neutral
+            if not user.difficulty or num_assigned == 0:
+                ideal_averages[user_name] = 0
+                continue
+            
+            # Get all available chore difficulties for this user
+            all_chore_difficulties = []
+            for chore in self.chores:
+                chore_idx = self.chore_index[chore.name]
+                for _ in range(chore.amount):
+                    all_chore_difficulties.append(user.difficulty[chore_idx])
+            
+            # Sort by easiest for the user
+            all_chore_difficulties.sort(reverse=True)
+            
+            # user gets the best chores they are assigned
+            ideal_chores = all_chore_difficulties[:num_assigned]
+            ideal_averages[user_name] = np.mean(ideal_chores)
+        
+        return ideal_averages
+    
+    def accuracy_score(self, schedule) -> Dict:
         total_score = 0
         user_info = {user.name: user for user in self.users}
         user_names = list(schedule.keys())
         chore_counts = np.array([len(schedule[name]) for name in user_names])
         user_max_chores = np.array([user_info[name].max_chores for name in user_names])
-        ratios = chore_counts / user_max_chores
-        total_capacity = np.sum(user_max_chores)
+        
+        ratios = np.divide(
+            chore_counts,
+            user_max_chores,
+            out=np.zeros_like(chore_counts, dtype=float),
+            where=user_max_chores != 0
+        )
 
-        chore_frequency = {}
+        total_capacity = np.sum(user_max_chores)
+        capacity_ratio = safe_divide(self.total_chores, total_capacity)
+
+        # ---------- Fairness Score (0-70 points) -------------
+        total_score += self.jains_fairness_index(ratios) * 70.0
+
+        #for difficulty and preference
+        ideal_difficulties = self.calculate_ideal_difficulty(schedule)
+        difficulty_deviations = []
+
+        total_loved_assigned = 0
+        total_hated_assigned = 0
+        total_loved_available = 0
+        total_hated_available = 0
+
         for chore in self.chores:
             chore_idx = self.chore_index[chore.name]
-            chore_frequency[chore_idx] = chore.amount
-        capacity_ratio = self.total_chores / total_capacity
+            
+            # Check if any user loves this chore
+            is_loved_by_anyone = any(user.loved_chores and chore_idx in user.loved_chores for user in self.users)
+            if is_loved_by_anyone:
+                total_loved_available += chore.amount
+            
+            # Check if any user hates this chore
+            is_hated_by_anyone = any(user.hated_chores and chore_idx in user.hated_chores for user in self.users)
+            if is_hated_by_anyone:
+                total_hated_available += chore.amount
 
-        # ---------- Fairness Score (0-50 points) -------------
-        total_score += self.jains_fairness_index(ratios) * 50.0
-
-        # ---------- Load Score (0-20 points) ------------- 
-        means_ratio = np.mean(ratios)
-        if capacity_ratio > 1.0:
-            overload_dev = abs((np.max(ratios) - means_ratio) / means_ratio) 
-            total_score += max(0, min(20, ((1 - overload_dev) * 10) * 2))
-        else:
-            underload_dev = abs((means_ratio - np.min(ratios)) / means_ratio)
-            total_score += max(0, min(20, ((1 - underload_dev) * 10) * 2))
-
-        diff_sums = []
-        total_loved = 0
-        total_hated = 0
-        hated_penalty = 0
-        # ---------- Preferences Score (0-10 points) -------------
         for user_name in user_names:
             user = user_info[user_name]
             assigned_chores = schedule[user_name]
             assigned_indices = [self.chore_index[chore] for chore in assigned_chores]
 
-            total_loved += sum(1 for id in assigned_indices if id in user.loved_chores)
-            total_hated += sum(1 for id in assigned_indices if id in user.hated_chores)
+            #for preferences
+            loved_amount = sum(1 for id in assigned_indices if id in user.loved_chores)
+            hated_amount = sum(1 for id in assigned_indices if id in user.hated_chores)
+            
+            total_loved_assigned += loved_amount
+            total_hated_assigned += hated_amount
 
-            for id in assigned_indices:
-                if id in user.hated_chores:
-                    chore_prevalance = chore_frequency[id] / self.total_chores
-                    if chore_prevalance > 0.2:
-                        hated_penalty += 0.3
-                    elif chore_prevalance > 0.1:
-                        hated_penalty += 0.6
-                    else:
-                        hated_penalty += 1.0
-                        
-            # ---------- Difficulty Score (0-20 points) -------------
+            #for difficulty
             if user.difficulty:
-                user_diff_sum  = sum(user.difficulty[id] for id in assigned_indices)
-                diff_sums.append(user_diff_sum)
-            else:
-                diff_sums.append(0)
-        diff_mean = np.mean(diff_sums)
-        if diff_mean != 0:
-            max_diff_dev = max(abs(d - diff_mean) / abs(diff_mean) for d in diff_sums)
-            total_score += max(0, ((1 - min(1.0, max_diff_dev)) * 10) * 2)
+                #gets the mean of each user's difficulty
+                #calculates the difference
+                #this is done so that we can calculate deviations based on difficulties tailored to user's difficulties
+                #instead of calculating deviations between other user's difficulties
+                diff_avg = np.mean([user.difficulty[i] for i in assigned_indices])
+                ideal_avg = ideal_difficulties[user_name]
+                difficulty_deviations.append(abs(diff_avg - ideal_avg))
+
+        # ---------- Preference Score (0-10 points) ------------- 
+        # Loved Chores, does not take into account overload
+        if total_loved_available > 0:
+            loved_ratio = safe_divide(total_loved_assigned, total_loved_available)
+            total_score += max(0, loved_ratio * 5)
         else:
-            total_score += 20 
+            total_score += 5
 
-        loved_ratio = total_loved / self.total_chores
-        total_score += min(5, loved_ratio * 5.0)
-        total_score += (5 - min(5.0, hated_penalty * 0.5))
+        # Hated chores, does not take into account overload 
+        if total_hated_available > 0:
+            hated_ratio = safe_divide(total_hated_assigned,total_hated_available)
+            hated_score = max(0, 5 * (1.0 - hated_ratio))
+            total_score += hated_score
+        else:
+            total_score += 5
+        
+        # ---------- Difficulty Score (0-20 points) -------------
+        if difficulty_deviations:
+            #gets mean of differences between ideal difficulty - actual difficulty
+            #smaller deviations means it almost got close to getting the ideal one
+            dev_avg = np.mean(difficulty_deviations)
 
-        total_score = max(0, min(100, total_score))
+            #gets list of all difficulties numbers to find the range 
+            user_difficulties = []
+            for user in self.users:
+                if user.difficulty:
+                    user_difficulties.extend(user.difficulty)
+            
+            #uses ranges so weight adjusts to difficulty scales
+            if user_difficulties:
+                diff_range = max(user_difficulties) - min(user_difficulties)
+                weight = max(1.0, diff_range * 0.3)
+            else:
+                weight = 3.0
+            
+            #smaller scores are better, so if more smaller scores were present
+            #we get a better score
+            total_score += max(0, 20 * (1 - safe_divide(dev_avg, weight)))
+        else:
+            total_score += 20
 
+        #results
+        total_score = max(0, min(100,total_score))
+        
         situation = "Normal"
         if capacity_ratio > 1.5:
             situation = "Severe Overload"
@@ -257,7 +350,7 @@ class Chore_Scheduler:
             situation = "Overload"
         elif capacity_ratio < 0.6:
             situation = "Underload"
-        
+
         score_results = "Bad"
         if total_score  >= 90:
             score_results = "Excellent"
@@ -277,33 +370,31 @@ class Chore_Scheduler:
             user_ratios[user_name] = {
                 'assigned': int(assigned),
                 'capacity': capacity,
-                'ratio': round(assigned / capacity, 2),
-                'percentage': round((assigned / capacity) * 100, 1)
+                'ratio': round(safe_divide(assigned, capacity), 2),
+                'percentage': round(safe_divide(assigned, capacity) * 100, 1)
             }
-
+        
         return {
             'score': round(total_score, 1),
             'situation': situation,
             'score_results': score_results,
             'user_loads': user_ratios,
-            'capacity_ratio': capacity_ratio
+            'capacity_ratio': round(capacity_ratio, 2)
         }
-
 
 
 
 if __name__ == "__main__":
 
-    chore_list = list([Chore("dishes", 5), Chore("cooking", 6), Chore("trash", 1), Chore("mopping", 1)])
-    user_list = list([User("User_1", max_chores=5, difficulty=[0, 0, 0, 0], hated_chores=[1], loved_chores=[0]), 
-                      User("User_2", max_chores=4, difficulty=[0, 0,0, 0], hated_chores=[0], loved_chores=[1])])
+    chore_list = list([Chore("dishes", 1), Chore("cooking", 10), Chore("trash", 1), Chore("mopping", 1), Chore("paint", 1), Chore("sweep", 1)])
+    user_list = list([User("Alice", max_chores=3, difficulty=[10,10,10,0,0,0],hated_chores=[], loved_chores=[]), 
+                      User("Ben", max_chores=3, difficulty=[0,0,0,3,5,4],hated_chores=[], loved_chores=[])])
     cs = Chore_Scheduler(chore_list, user_list)
     schedule, score = cs.simulated_annealing()
-    quality = cs.get_quality_score(schedule)
+    quality = cs.accuracy_score(schedule)
     print(f"{schedule=}")
-    print(f"Optimization Score: {score:.2f}")
     print()
-    print(f"\tQuality Score: {quality['score']}/100 - {quality['score_results']}")
+    print(f"\tQuality Score: {quality['score']}/100 {quality['score_results']}")
     print(f"\tSituation: {quality['situation']}")
     print(f"\tCapacity Ratio: {quality['capacity_ratio']}x")
     print()
