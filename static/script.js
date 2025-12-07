@@ -16,6 +16,14 @@ const scheduleOutput = document.getElementById("schedule-output");
 const backBtn = document.getElementById("back-btn");
 const qualityOutput = document.getElementById("quality-output");
 
+const difficultyGrid = document.getElementById("difficulty-grid");
+const preferencesCard = document.getElementById("preferences-card");
+const prefUserSelect = document.getElementById("pref-user-select");
+const lovedChips = document.getElementById("loved-chips");
+const hatedChips = document.getElementById("hated-chips");
+const lovedSelect = document.getElementById("loved-select");
+const hatedSelect = document.getElementById("hated-select");
+
 //allow pressing 'Enter' to add a user/chore
 userInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
@@ -34,6 +42,9 @@ choreInput.addEventListener("keydown", (event) => {
 // Stored data
 let users = [];
 let chores = [];
+let difficulties = {};
+let loved = {};
+let hated = {};
 
 function showError(msg) {
   errorMessage.textContent = msg;
@@ -45,6 +56,69 @@ function clearError() {
   errorMessage.style.display = "none";
 }
 
+function ensureDifficultyDefaults() {
+  users.forEach((u) => {
+    if (!difficulties[u.name]) {
+      difficulties[u.name] = {};
+    }
+    chores.forEach((c) => {
+      if (difficulties[u.name][c.name] === undefined) {
+        difficulties[u.name][c.name] = 0; // default difficulty
+      }
+    });
+  });
+}
+
+function syncPreferencesWithUsersAndChores() {
+  const userNames = users.map((u) => u.name);
+  const choreNames = chores.map((c) => c.name);
+
+  //make sure each existing user has entries
+  userNames.forEach((name) => {
+    if (!loved[name]) loved[name] = [];
+    if (!hated[name]) hated[name] = [];
+  });
+
+  //remove from deleted users
+  Object.keys(loved).forEach((name) => {
+    if (!userNames.includes(name)) delete loved[name];
+  });
+  Object.keys(hated).forEach((name) => {
+    if (!userNames.includes(name)) delete hated[name];
+  });
+
+  //remove deleted chores
+  const cleanList = (arr) => arr.filter((chore) => choreNames.includes(chore));
+  Object.keys(loved).forEach((name) => {
+    loved[name] = cleanList(loved[name]);
+  });
+  Object.keys(hated).forEach((name) => {
+    hated[name] = cleanList(hated[name]);
+  });
+}
+
+function createPrefChip(choreName, type, userName) {
+  const chip = document.createElement("span");
+  chip.className = `chip ${type}-chip`;
+  chip.textContent = choreName;
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "chip-remove";
+  btn.textContent = "×";
+  btn.addEventListener("click", () => {
+    if (type === "loved") {
+      loved[userName] = loved[userName].filter((c) => c !== choreName);
+    } else {
+      hated[userName] = hated[userName].filter((c) => c !== choreName);
+    }
+    renderPreferences();
+  });
+
+  chip.appendChild(btn);
+  return chip;
+}
+
 function renderUsers() {
   usersListEl.innerHTML = "";
   users.forEach((u, idx) => {
@@ -53,8 +127,13 @@ function renderUsers() {
     li.title = "Click to remove";
 
     li.addEventListener("click", () => {
-      users.splice(idx, 1);
+      const removed = users.splice(idx, 1)[0];
+      if (removed && difficulties[removed.name]) {
+        delete difficulties[removed.name];
+      }
       renderUsers();
+      renderDifficultyMatrix();
+      renderPreferences();
     });
 
     usersListEl.appendChild(li);
@@ -69,8 +148,18 @@ function renderChores() {
     li.title = "Click to remove";
 
     li.addEventListener("click", () => {
-      chores.splice(idx, 1);
+      const removed = chores.splice(idx, 1)[0];
+      if (removed) {
+        // remove this chore's difficulty entry from every user
+        Object.keys(difficulties).forEach((userName) => {
+          if (difficulties[userName] && difficulties[userName][removed.name] !== undefined) {
+            delete difficulties[userName][removed.name];
+          }
+        });
+      }
       renderChores();
+      renderDifficultyMatrix();
+      renderPreferences();
     });
 
     choresListEl.appendChild(li);
@@ -105,6 +194,8 @@ addUserBtn.addEventListener("click", () => {
   userInput.focus();
 
   renderUsers();
+  renderDifficultyMatrix();
+  renderPreferences();
 });
 
 // Add chore: "Name, amount"
@@ -135,6 +226,8 @@ addChoreBtn.addEventListener("click", () => {
   choreInput.focus();
 
   renderChores();
+  renderDifficultyMatrix();
+  renderPreferences();
 });
 
 // Generate schedule -> call backend, then show schedule view
@@ -150,7 +243,7 @@ generateBtn.addEventListener("click", async () => {
     const res = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ users, chores }),
+      body: JSON.stringify({ users, chores, difficulties, loved,hated }),
     });
 
     if (!res.ok) {
@@ -167,6 +260,193 @@ generateBtn.addEventListener("click", async () => {
     showError("Error contacting server: " + err.message);
   }
 });
+
+prefUserSelect.addEventListener("change", () => {
+  renderPreferences();
+});
+
+lovedSelect.addEventListener("change", () => {
+  const userName = prefUserSelect.value;
+  const choreName = lovedSelect.value;
+  if (!userName || !choreName) return;
+
+  if (!loved[userName]) loved[userName] = [];
+  if (!loved[userName].includes(choreName)) {
+    loved[userName].push(choreName);
+  }
+  lovedSelect.value = "";
+  renderPreferences();
+});
+
+hatedSelect.addEventListener("change", () => {
+  const userName = prefUserSelect.value;
+  const choreName = hatedSelect.value;
+  if (!userName || !choreName) return;
+
+  if (!hated[userName]) hated[userName] = [];
+  if (!hated[userName].includes(choreName)) {
+    hated[userName].push(choreName);
+  }
+  hatedSelect.value = "";
+  renderPreferences();
+});
+
+
+function renderDifficultyMatrix() {
+  difficultyGrid.innerHTML = "";
+
+  if (users.length === 0 || chores.length === 0) {
+    difficultyGrid.innerHTML =
+      "<p class='hint'>Add at least one user and one chore to set difficulties.</p>";
+    return;
+  }
+
+  ensureDifficultyDefaults();
+
+  const table = document.createElement("table");
+  table.classList.add("difficulty-table");
+
+  //header row: corner+chore names
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+
+  const corner = document.createElement("th");
+  corner.textContent = "User / Chore";
+  headRow.appendChild(corner);
+
+  chores.forEach((c) => {
+    const th = document.createElement("th");
+    th.textContent = c.name;
+    headRow.appendChild(th);
+  });
+
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+
+  //body - one row per user
+  const tbody = document.createElement("tbody");
+
+  users.forEach((u) => {
+    const row = document.createElement("tr");
+
+    const userCell = document.createElement("th");
+    userCell.textContent = u.name;
+    row.appendChild(userCell);
+
+    chores.forEach((c) => {
+      const cell = document.createElement("td");
+
+      const input = document.createElement("input");
+      input.type = "number";
+      input.min = "0";
+      input.max = "10";
+      input.classList.add("difficulty-input");
+
+      const currentVal =
+        difficulties[u.name] && difficulties[u.name][c.name] !== undefined
+          ? difficulties[u.name][c.name]
+          : 0;
+      input.value = currentVal;
+
+      input.addEventListener("change", () => {
+        let val = parseInt(input.value, 10);
+        if (Number.isNaN(val)) val = 0;
+        if (val < 0) val = 0;
+        if (val > 10) val = 10;
+        input.value = val;
+
+        if (!difficulties[u.name]) difficulties[u.name] = {};
+        difficulties[u.name][c.name] = val;
+      });
+
+      cell.appendChild(input);
+      row.appendChild(cell);
+    });
+
+    tbody.appendChild(row);
+  });
+
+  table.appendChild(tbody);
+  difficultyGrid.appendChild(table);
+}
+
+function renderPreferences() {
+  preferencesCard.style.display = "block";
+
+  syncPreferencesWithUsersAndChores();
+
+  let selectedName = prefUserSelect.value;
+  
+  //populate user dropdown
+  prefUserSelect.innerHTML = "";
+  if (users.length === 0 || chores.length === 0) {
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = users.length === 0
+      ? "Add a user to edit preferences"
+      : "Add a chore to edit preferences";
+    prefUserSelect.appendChild(opt);
+    lovedChips.innerHTML = "";
+    hatedChips.innerHTML = "";
+    lovedSelect.innerHTML = '<option value="">+ Add loved chore…</option>';
+    hatedSelect.innerHTML = '<option value="">+ Add hated chore…</option>';
+    return;
+  }
+
+  if (!users.some((u) => u.name === selectedName)) {
+    selectedName = users[0].name;
+  }
+
+  users.forEach((u) => {
+    const opt = document.createElement("option");
+    opt.value = u.name;
+    opt.textContent = u.name;
+    if (u.name === selectedName) opt.selected = true;
+    prefUserSelect.appendChild(opt);
+  });
+
+  const currentUser = selectedName;
+  const userLoved = loved[currentUser] || [];
+  const userHated = hated[currentUser] || [];
+
+  //render chips
+  lovedChips.innerHTML = "";
+  userLoved.forEach((choreName) => {
+    const chip = createPrefChip(choreName, "loved", currentUser);
+    lovedChips.appendChild(chip);
+  });
+
+  hatedChips.innerHTML = "";
+  userHated.forEach((choreName) => {
+    const chip = createPrefChip(choreName, "hated", currentUser);
+    hatedChips.appendChild(chip);
+  });
+
+  //populate dropdowns for chores not already in list
+  const availableForLoved = chores
+    .map((c) => c.name)
+    .filter((name) => !userLoved.includes(name));
+
+  const availableForHated = chores
+    .map((c) => c.name)
+    .filter((name) => !userHated.includes(name));
+
+  lovedSelect.innerHTML = '<option value="">+ Add loved chore…</option>';
+  availableForLoved.forEach((name) => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    lovedSelect.appendChild(opt);
+  });
+
+  hatedSelect.innerHTML = '<option value="">+ Add hated chore…</option>';
+  availableForHated.forEach((name) => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    hatedSelect.appendChild(opt);
+  });
+}
 
 // Render schedule table
 function renderSchedule(schedule, quality) {
@@ -261,3 +541,6 @@ backBtn.addEventListener("click", () => {
   scheduleView.style.display = "none";
   inputView.style.display = "block";
 });
+
+renderDifficultyMatrix();
+renderPreferences();

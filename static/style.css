@@ -166,3 +166,103 @@ h1 {
   padding: 6px 0;
 }
 
+/*here and below is difficulty matrix table*/
+#difficulty-grid table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  font-size: 0.85rem;
+}
+
+#difficulty-grid th,
+#difficulty-grid td {
+  padding: 6px;
+  border-bottom: 1px solid #1f2937;
+}
+
+#difficulty-grid th {
+  text-align: left;
+  font-weight: 600;
+}
+
+.difficulty-input {
+  width: 3rem;
+  padding: 2px 4px;
+  border-radius: 4px;
+  border: 1px solid #4b5563;
+  background: #020617;
+  color: #e5e7eb;
+  font-size: 0.85rem;
+}
+
+.difficulty-input:focus {
+  outline: 1px solid #38bdf8;
+  border-color: #38bdf8;
+}
+
+.pref-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.pref-column {
+  flex: 1;
+  min-width: 0;
+}
+
+.small-label {
+  display: block;
+  margin-top: 8px;
+  margin-bottom: 4px;
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
+.chip-container {
+  margin-top: 4px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  margin: 2px 4px 2px 0;
+  border-radius: 999px;
+  background: #020617;
+  border: 1px solid #1f2937;
+  font-size: 0.8rem;
+}
+
+.loved-chip {
+  border-color: #22c55e;
+}
+
+.hated-chip {
+  border-color: #f97373;
+}
+
+.chip-remove {
+  margin-left: 4px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.chip-remove:hover {
+  color: #fca5a5;
+}
+
+.pref-select {
+  margin-top: 6px;
+  width: 100%;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid #4b5563;
+  background: #020617;
+  color: #e5e7eb;
+  font-size: 0.85rem;
+}

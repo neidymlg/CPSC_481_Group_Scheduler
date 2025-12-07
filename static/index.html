@@ -49,6 +49,43 @@
             </div>
           </section>
 
+          <section class="card" id="difficulty-card">
+            <h2>Difficulty Matrix</h2>
+            <p class="hint">
+              Rate how difficult each chore is for each user
+              (0 = easy/okay, 10 = very hard/avoid).
+            </p>
+            <div id="difficulty-grid"></div>
+          </section>
+
+          <section class="card" id="preferences-card">
+            <h2>Loved &amp; Hated Chores</h2>
+            <p class="hint">
+              Choose a user and mark chores they especially like or want to avoid.
+            </p>
+
+            <label for="pref-user-select" class="small-label">Select user:</label>
+            <select id="pref-user-select"></select>
+
+            <div class="pref-row">
+              <div class="pref-column">
+                <h3>Loves</h3>
+                <div id="loved-chips" class="chip-container"></div>
+                <select id="loved-select" class="pref-select">
+                  <option value="">+ Add loved chore…</option>
+                </select>
+              </div>
+
+              <div class="pref-column">
+                <h3>Hates</h3>
+                <div id="hated-chips" class="chip-container"></div>
+                <select id="hated-select" class="pref-select">
+                  <option value="">+ Add hated chore…</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
           <button id="generate-btn" class="primary-btn">
             Generate Schedule
           </button>
