@@ -16,7 +16,12 @@ class User:
                 hated_chores: List[int] = None,
                 loved_chores: List[int] = None):
         self.name = name
+        
+        if max_chores < 1:
+            max_chores = 1
+
         self.max_chores = max_chores
+
         if difficulty is None or len(difficulty) == 0 or all(d == 0 for d in difficulty):
             self.difficulty = None
         else:
@@ -252,9 +257,9 @@ class Chore_Scheduler:
         total_capacity = np.sum(user_max_chores)
         capacity_ratio = safe_divide(self.total_chores, total_capacity)
 
-        # ---------- Fairness Score (0-70 points) -------------
-        total_score += self.jains_fairness_index(ratios) * 70.0
-
+        # ---------- Fairness Score (0-70 points) -------------  
+        total_score += self.jains_fairness_index(ratios) * 70.0 
+        
         #for difficulty and preference
         ideal_difficulties = self.calculate_ideal_difficulty(schedule)
         difficulty_deviations = []
@@ -348,7 +353,9 @@ class Chore_Scheduler:
             situation = "Severe Overload"
         elif capacity_ratio > 1.0:
             situation = "Overload"
-        elif capacity_ratio < 0.6:
+        elif capacity_ratio < 0.4:  
+            situation = "Severe Underload"
+        elif capacity_ratio < 0.7:  
             situation = "Underload"
 
         score_results = "Bad"
