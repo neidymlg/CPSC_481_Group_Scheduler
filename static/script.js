@@ -14,6 +14,22 @@ const inputView = document.getElementById("input-view");
 const scheduleView = document.getElementById("schedule-view");
 const scheduleOutput = document.getElementById("schedule-output");
 const backBtn = document.getElementById("back-btn");
+const qualityOutput = document.getElementById("quality-output");
+
+//allow pressing 'Enter' to add a user/chore
+userInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();      //prevent form submit/page reload
+    addUserBtn.click();
+  }
+});
+
+choreInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    addChoreBtn.click();
+  }
+});
 
 // Stored data
 let users = [];
@@ -142,7 +158,7 @@ generateBtn.addEventListener("click", async () => {
     }
 
     const data = await res.json();
-    renderSchedule(data.schedule || {});
+    renderSchedule(data.schedule || {}, data.quality);
 
     // Switch "page"
     inputView.style.display = "none";
@@ -153,7 +169,52 @@ generateBtn.addEventListener("click", async () => {
 });
 
 // Render schedule table
-function renderSchedule(schedule) {
+function renderSchedule(schedule, quality) {
+  //added quality summary
+  qualityOutput.innerHTML = "";
+
+  if (quality) {
+    const scoreText = `${quality.score}/100 ${quality.score_results}`;
+
+    qualityOutput.innerHTML = `
+      <h2>Schedule Quality</h2>
+      <p><strong>Quality Score:</strong> ${scoreText}</p>
+      <p><strong>Situation:</strong> ${quality.situation}</p>
+      <p><strong>Capacity Ratio:</strong> ${quality.capacity_ratio}x</p>
+    `;
+  }
+
+  //workload
+  if (quality && quality.user_loads) {
+  const loads = quality.user_loads;
+
+  qualityOutput.innerHTML += `<hr class="workload-divider">`;
+
+  let workloadsHtml = `<h3>Individual Workloads</h3><div class="workload-section">`;
+
+  Object.entries(loads).forEach(([name, info], index, arr) => {
+    workloadsHtml += `
+      <div class="workload-entry">
+        <p class="workload-line">
+          <strong>${name}:</strong>
+          ${info.assigned}/${info.capacity} chores
+          (${info.percentage}% capacity, ratio=${info.ratio})
+        </p>
+      </div>
+    `;
+
+    //add separator except after the last user
+    if (index < arr.length - 1) {
+        workloadsHtml += `<hr class="workload-separator">`;
+    }
+});
+
+  workloadsHtml += `</div>`;
+
+  qualityOutput.innerHTML += workloadsHtml;
+}
+
+
   const table = document.createElement("table");
 
   const thead = document.createElement("thead");
@@ -186,6 +247,12 @@ function renderSchedule(schedule) {
   table.appendChild(tbody);
 
   scheduleOutput.innerHTML = "";
+
+  //add title for schedule for clear separation
+  const scheduleTitle = document.createElement("h2");
+  scheduleTitle.textContent = "Schedule";
+  scheduleOutput.appendChild(scheduleTitle);
+
   scheduleOutput.appendChild(table);
 }
 

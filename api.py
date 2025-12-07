@@ -11,7 +11,7 @@ def index():
     # Serve index.html from the static folder
     return app.send_static_file("index.html")
 
-
+6
 @app.post("/schedule")
 def make_schedule():
     data = request.get_json(force=True)
@@ -28,9 +28,15 @@ def make_schedule():
         if u.get("name")
     ]
 
-    scheduler = Chore_Scheduler(chores, users)  # or Group_Chore_Scheduler
+    scheduler = Chore_Scheduler(chores, users)
 
-    return jsonify({"schedule": scheduler.schedule})
+    #added quality metrics in generated schedule
+    quality = scheduler.accuracy_score(scheduler.schedule)
+
+    return jsonify({
+        "schedule": scheduler.schedule,
+        "quality": quality,
+    })
 
 
 if __name__ == "__main__":
