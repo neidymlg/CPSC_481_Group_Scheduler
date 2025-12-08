@@ -338,7 +338,7 @@ function renderDifficultyMatrix() {
 
       const input = document.createElement("input");
       input.type = "number";
-      input.min = "0";
+      input.min = "-10";
       input.max = "10";
       input.classList.add("difficulty-input");
 
@@ -351,7 +351,7 @@ function renderDifficultyMatrix() {
       input.addEventListener("change", () => {
         let val = parseInt(input.value, 10);
         if (Number.isNaN(val)) val = 0;
-        if (val < 0) val = 0;
+        if (val < -10) val = -10;
         if (val > 10) val = 10;
         input.value = val;
 
