@@ -120,8 +120,8 @@ project/
 
 ## Usage
 
-Explain how to use the application once running.
-Example:
+
+Once the website is running, you should be able to:
 
 * Enter inputs in the form (Name, capacity, chores, etc.)
 * Click “Generate Schedule”
