@@ -105,7 +105,7 @@ def test_difficulty():
     schedule, score = cs.simulated_annealing()
     quality = cs.accuracy_score(schedule)
     print_test_results("5. Difficulty", cs, schedule, score, quality)
-    print("EXPECTED: User_1 shouldn get dishes, cooking, and trash, User_2 gets laundry, vacuum, and mop")
+    print("EXPECTED: User_1 should get dishes, cooking, and trash, User_2 gets laundry, vacuum, and mop")
     print()
 
 def test_unequal_capacity():
@@ -412,7 +412,7 @@ def test_love_overrides_difficulty():
     schedule, score = cs.simulated_annealing(max_iterations=1500)
     quality = cs.accuracy_score(schedule)
     print_test_results("28. Love Overrides Difficulty", cs, schedule, score, quality)
-    print("should not get loved chores due to difficulty, so user_0 should get chore_1 and user_1 chore_0")
+    print("Should not get loved chores due to difficulty, so user_0 should get chore_1 and user_1 chore_0")
 
 def test_imbalanced_love():
     chores = [Chore("chore_0", 2), Chore("chore_1", 4), Chore("chore_2", 2)]
@@ -437,7 +437,7 @@ def test_partial_overlap():
         User("user_2", max_chores=3, difficulty=[0, -5, 10, 5], loved_chores=[2, 3]),
     ]
     cs = Chore_Scheduler(chores, users)
-    schedule, score = cs.simulated_annealing(max_iterations=5000)
+    schedule, score = cs.simulated_annealing()
     quality = cs.accuracy_score(schedule)
     print_test_results("33. Partial Overlap Preferences", cs, schedule, score, quality)
     print("Preference tiebreakers will be broken by difficulty.")
@@ -471,11 +471,11 @@ def test_mixed_preference_types():
     users = [
         User("user_0", max_chores=3, difficulty=[5, -5, -3, -1], loved_chores=[2]),
         User("user_1", max_chores=3, difficulty=[-5, 0, 5, -2], loved_chores=[1]),
-        User("user_2", max_chores=3, difficulty=[6, -4, 0, 10], hated_chores=[3]),
+        User("user_2", max_chores=3, difficulty=[6, -4, 0, 8], hated_chores=[3]),
         User("user_3", max_chores=3, difficulty=[1, 1, 1, 1]),
     ]
     cs = Chore_Scheduler(chores, users)
-    schedule, score = cs.simulated_annealing(max_iterations=2000)
+    schedule, score = cs.simulated_annealing(cooling_rate=0.002)
     quality = cs.accuracy_score(schedule)
     print_test_results("41. Mixed Preference Types", cs, schedule, score, quality)
     print("Even though user_0 has a negative difficulty for a loved chore, as long as it isn't too great in comparison with other users, it should assign it.")
@@ -486,11 +486,11 @@ def test_weak_mixed_preference_types():
     users = [
         User("user_0", max_chores=3, difficulty=[5, -5, -1, -1], loved_chores=[2]),
         User("user_1", max_chores=3, difficulty=[-5, 0, 5, -2], loved_chores=[1]),
-        User("user_2", max_chores=3, difficulty=[6, -4, 0, 5], hated_chores=[3]),
+        User("user_2", max_chores=3, difficulty=[2, -4, 0, 5], hated_chores=[3]),
         User("user_3", max_chores=3, difficulty=[1, 1, 1, 1]),
     ]
     cs = Chore_Scheduler(chores, users)
-    schedule, score = cs.simulated_annealing(max_iterations=2000)
+    schedule, score = cs.simulated_annealing(cooling_rate=0.06)
     quality = cs.accuracy_score(schedule)
     print_test_results("41. Weaker Mixed Preference Types", cs, schedule, score, quality)
     print("Now that we have gotten less conflicting difficulties, user_2 should get none of chore_3 and user_0 should get all chore_2")
@@ -538,6 +538,6 @@ if __name__ == "__main__":
     # test_all_negative_difficulties() 
     # test_all_positive_difficulties()
     # test_mixed_preference_types() 
-    test_weak_mixed_preference_types()
+    # test_weak_mixed_preference_types()
 
    

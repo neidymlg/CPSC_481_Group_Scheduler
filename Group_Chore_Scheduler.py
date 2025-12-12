@@ -166,7 +166,7 @@ class Chore_Scheduler:
         return neighbors
 
     #evaluates which schedule is the very best based on score
-    def simulated_annealing(self, max_iterations: int = 1000, initial_temp: float = 100.0, cooling_rate: float = 0.95):
+    def simulated_annealing(self, max_iterations: int = 500, initial_temp: float = 100.0, cooling_rate: float = 0.01):
         current_schedule = copy.deepcopy(self.schedule)
         current_score = self.evaluation_function(current_schedule)
 
@@ -202,9 +202,9 @@ class Chore_Scheduler:
                 best_schedule = current_schedule
                 best_score = current_score
             
-            #reduces temperature
-            temp *= cooling_rate
-
+            #reduces temperature using exponential cooling
+            temp = initial_temp * math.exp(-cooling_rate * i)
+            
         return best_schedule, best_score
     
     #calculates the mean of the user's chores if they are based on best difficulty
