@@ -11,7 +11,6 @@ def index():
     # Serve index.html from the static folder
     return app.send_static_file("index.html")
 
-6
 @app.post("/schedule")
 def make_schedule():
     data = request.get_json(force=True)
@@ -70,8 +69,13 @@ def make_schedule():
 
     scheduler = Chore_Scheduler(chores, users)
 
+    annealing = data.get("annealing", {}) or {}
+    max_iterations = int(annealing.get("max_iterations", 500))
+    initial_temp = float(annealing.get("initial_temp", 100.0))
+    cooling_rate = float(annealing.get("cooling_rate", 0.01))
+
     #added quality metrics in generated schedule with simulated annealing
-    best_schedule, best_score = scheduler.simulated_annealing()
+    best_schedule, best_score = scheduler.simulated_annealing(max_iterations=max_iterations, initial_temp=initial_temp, cooling_rate=cooling_rate)
     quality = scheduler.accuracy_score(best_schedule)
 
     return jsonify({

@@ -389,49 +389,5 @@ class Chore_Scheduler:
             'capacity_ratio': round(capacity_ratio, 2)
         }
 
-
-
-# if __name__ == "__main__":
-
-#     chore_list = list([Chore("dishes", 1), Chore("cooking", 10), Chore("trash", 1), Chore("mopping", 1), Chore("paint", 1), Chore("sweep", 1)])
-#     user_list = list([User("Alice", max_chores=3, difficulty=[10,10,10,0,0,0], hated_chores=[1], loved_chores=[0]), 
-#                       User("Ben", max_chores=3, difficulty=[0,0,0,3,5,4], hated_chores=[0], loved_chores=[1])])
-#     cs = Chore_Scheduler(chore_list, user_list)
-#     schedule, score = cs.simulated_annealing()
-#     quality = cs.accuracy_score(schedule)
-#     print(f"{schedule=}")
-#     print()
-#     print(f"\tQuality Score: {quality['score']}/100 {quality['score_results']}")
-#     print(f"\tSituation: {quality['situation']}")
-#     print(f"\tCapacity Ratio: {quality['capacity_ratio']}x")
-#     print()
-#     print("Individual Workloads:")
-#     for user_name, load in quality['user_loads'].items():
-#         print(f"\t{user_name}: {load['assigned']}/{load['capacity']} chores "
-#               f"\t({load['percentage']}% capacity, ratio={load['ratio']})")
-
+       
 app = Flask(__name__)
-
-@app.post("/schedule")
-def make_schedule():
-    data = request.get_json()
-
-    chores = [
-       Chore(c["name"], int(c["amount"]))
-        for c in data.get("chores", [])
-       if c.get("name") and int(c.get("amount", 0)) > 0
-    ]
-
-    users = [
-       User(u["name"], int(u["max_chores"]))
-       for u in data.get("users", [])
-       if u.get("name")
-    ]
-
-    scheduler = Chore_Scheduler(chores, users)
-    quality = scheduler.accuracy_score(scheduler.schedule)
-    return jsonify({"schedule": scheduler.schedule, "quality": quality})
-
-
-if __name__ == "__main__":
-    app.run(debug=True)

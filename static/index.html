@@ -86,6 +86,29 @@
             </div>
           </section>
 
+          <!--suggested edit after presentation, adding a parameter section to site-->
+          <section class="card" id="sa-settings-card"> 
+            <h2>Annealing Settings</h2>
+            <p class="hint">Tune optimization settings (optional).</p>
+
+            <div class="row three">
+              <div class="field">
+                <label for="temp-input" class="small-label">Initial Temp</label>
+                <input id="temp-input" type="number" step="1" value="100" />
+              </div>
+
+              <div class="field">
+                <label for="iter-input" class="small-label">Max Iterations</label>
+                <input id="iter-input" type="number" step="1" value="500" />
+              </div>
+
+              <div class="field">
+                <label for="cooling-input" class="small-label">Cooling Rate</label>
+                <input id="cooling-input" type="number" step="0.001" value="0.01" />
+              </div>
+            </div>
+          </section>
+
           <button id="generate-btn" class="primary-btn">
             Generate Schedule
           </button>

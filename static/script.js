@@ -17,6 +17,7 @@ const backBtn = document.getElementById("back-btn");
 const qualityOutput = document.getElementById("quality-output");
 
 const difficultyGrid = document.getElementById("difficulty-grid");
+
 const preferencesCard = document.getElementById("preferences-card");
 const prefUserSelect = document.getElementById("pref-user-select");
 const lovedChips = document.getElementById("loved-chips");
@@ -24,20 +25,9 @@ const hatedChips = document.getElementById("hated-chips");
 const lovedSelect = document.getElementById("loved-select");
 const hatedSelect = document.getElementById("hated-select");
 
-//allow pressing 'Enter' to add a user/chore
-userInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
-    event.preventDefault();      //prevent form submit/page reload
-    addUserBtn.click();
-  }
-});
-
-choreInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    addChoreBtn.click();
-  }
-});
+const tempInput = document.getElementById("temp-input");
+const iterInput = document.getElementById("iter-input");
+const coolingInput = document.getElementById("cooling-input");
 
 // Stored data
 let users = [];
@@ -165,132 +155,6 @@ function renderChores() {
     choresListEl.appendChild(li);
   });
 }
-
-// Add user: "Name, maxChores"
-addUserBtn.addEventListener("click", () => {
-  clearError();
-  const text = userInput.value.trim();
-  if (!text) return;
-
-  const parts = text.split(",");
-  if (parts.length < 2) {
-    showError("User format must be: Name, maxChores (example: User_1, 5)");
-    return;
-  }
-
-  const name = parts[0].trim();
-  const maxStr = parts[1].trim();
-  const max = Number(maxStr);
-
-  if (!name || Number.isNaN(max)) {
-    showError("User format must be: Name, maxChores (example: User_1, 5)");
-    return;
-  }
-
-  users.push({ name, max_chores: max });
-
-  // Clear and refocus the text box
-  userInput.value = "";
-  userInput.focus();
-
-  renderUsers();
-  renderDifficultyMatrix();
-  renderPreferences();
-});
-
-// Add chore: "Name, amount"
-addChoreBtn.addEventListener("click", () => {
-  clearError();
-  const text = choreInput.value.trim();
-  if (!text) return;
-
-  const parts = text.split(",");
-  if (parts.length < 2) {
-    showError("Chore format must be: Name, amount (example: dishes, 3)");
-    return;
-  }
-
-  const name = parts[0].trim();
-  const amtStr = parts[1].trim();
-  const amt = Number(amtStr);
-
-  if (!name || Number.isNaN(amt)) {
-    showError("Chore format must be: Name, amount (example: dishes, 3)");
-    return;
-  }
-
-  chores.push({ name, amount: amt });
-
-  // Clear and refocus the text box
-  choreInput.value = "";
-  choreInput.focus();
-
-  renderChores();
-  renderDifficultyMatrix();
-  renderPreferences();
-});
-
-// Generate schedule -> call backend, then show schedule view
-generateBtn.addEventListener("click", async () => {
-  clearError();
-
-  if (users.length === 0 || chores.length === 0) {
-    showError("Please add at least one user and one chore.");
-    return;
-  }
-
-  try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ users, chores, difficulties, loved,hated }),
-    });
-
-    if (!res.ok) {
-      throw new Error(`Server responded with status ${res.status}`);
-    }
-
-    const data = await res.json();
-    renderSchedule(data.schedule || {}, data.quality);
-
-    // Switch "page"
-    inputView.style.display = "none";
-    scheduleView.style.display = "block";
-  } catch (err) {
-    showError("Error contacting server: " + err.message);
-  }
-});
-
-prefUserSelect.addEventListener("change", () => {
-  renderPreferences();
-});
-
-lovedSelect.addEventListener("change", () => {
-  const userName = prefUserSelect.value;
-  const choreName = lovedSelect.value;
-  if (!userName || !choreName) return;
-
-  if (!loved[userName]) loved[userName] = [];
-  if (!loved[userName].includes(choreName)) {
-    loved[userName].push(choreName);
-  }
-  lovedSelect.value = "";
-  renderPreferences();
-});
-
-hatedSelect.addEventListener("change", () => {
-  const userName = prefUserSelect.value;
-  const choreName = hatedSelect.value;
-  if (!userName || !choreName) return;
-
-  if (!hated[userName]) hated[userName] = [];
-  if (!hated[userName].includes(choreName)) {
-    hated[userName].push(choreName);
-  }
-  hatedSelect.value = "";
-  renderPreferences();
-});
-
 
 function renderDifficultyMatrix() {
   difficultyGrid.innerHTML = "";
@@ -464,6 +328,7 @@ function renderSchedule(schedule, quality) {
     `;
   }
 
+
   //workload
   if (quality && quality.user_loads) {
   const loads = quality.user_loads;
@@ -536,11 +401,171 @@ function renderSchedule(schedule, quality) {
   scheduleOutput.appendChild(table);
 }
 
+
+function getAnnealingSettings() {
+  let initial_temp = Number(tempInput?.value ?? 100);
+  let max_iterations = Number(iterInput?.value ?? 500);
+  let cooling_rate = Number(coolingInput?.value ?? 0.01);
+
+  if (!Number.isFinite(initial_temp) || initial_temp <= 0) initial_temp = 100;
+  if (!Number.isFinite(max_iterations) || max_iterations < 1) max_iterations = 500;
+  max_iterations = Math.floor(max_iterations);
+
+  if (!Number.isFinite(cooling_rate) || cooling_rate <= 0) cooling_rate = 0.01;
+
+  return { initial_temp, max_iterations, cooling_rate };
+}
+
+
+//allow pressing 'Enter' to add a user/chore
+userInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();      //prevent form submit/page reload
+    addUserBtn.click();
+  }
+});
+
+choreInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    addChoreBtn.click();
+  }
+});
+
+// Add user: "Name, maxChores"
+addUserBtn.addEventListener("click", () => {
+  clearError();
+  const text = userInput.value.trim();
+  if (!text) return;
+
+  const parts = text.split(",");
+  if (parts.length < 2) {
+    showError("User format must be: Name, maxChores (example: User_1, 5)");
+    return;
+  }
+
+  const name = parts[0].trim();
+  const maxStr = parts[1].trim();
+  const max = Number(maxStr);
+
+  if (!name || Number.isNaN(max)) {
+    showError("User format must be: Name, maxChores (example: User_1, 5)");
+    return;
+  }
+
+  users.push({ name, max_chores: max });
+
+  // Clear and refocus the text box
+  userInput.value = "";
+  userInput.focus();
+
+  renderUsers();
+  renderDifficultyMatrix();
+  renderPreferences();
+});
+
+// Add chore: "Name, amount"
+addChoreBtn.addEventListener("click", () => {
+  clearError();
+  const text = choreInput.value.trim();
+  if (!text) return;
+
+  const parts = text.split(",");
+  if (parts.length < 2) {
+    showError("Chore format must be: Name, amount (example: dishes, 3)");
+    return;
+  }
+
+  const name = parts[0].trim();
+  const amtStr = parts[1].trim();
+  const amt = Number(amtStr);
+
+  if (!name || Number.isNaN(amt)) {
+    showError("Chore format must be: Name, amount (example: dishes, 3)");
+    return;
+  }
+
+  chores.push({ name, amount: amt });
+
+  // Clear and refocus the text box
+  choreInput.value = "";
+  choreInput.focus();
+
+  renderChores();
+  renderDifficultyMatrix();
+  renderPreferences();
+});
+
+// Generate schedule -> call backend, then show schedule view
+generateBtn.addEventListener("click", async () => {
+  clearError();
+
+  if (users.length === 0 || chores.length === 0) {
+    showError("Please add at least one user and one chore.");
+    return;
+  }
+
+  try {
+    const annealing = getAnnealingSettings();
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ users, chores, difficulties, loved, hated, annealing,}),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Server responded with status ${res.status}`);
+    }
+
+    const data = await res.json();
+    renderSchedule(data.schedule || {}, data.quality);
+
+    // Switch "page"
+    inputView.style.display = "none";
+    scheduleView.style.display = "block";
+  } catch (err) {
+    showError("Error contacting server: " + err.message);
+  }
+});
+
+prefUserSelect.addEventListener("change", () => {
+  renderPreferences();
+});
+
+lovedSelect.addEventListener("change", () => {
+  const userName = prefUserSelect.value;
+  const choreName = lovedSelect.value;
+  if (!userName || !choreName) return;
+
+  if (!loved[userName]) loved[userName] = [];
+  if (!loved[userName].includes(choreName)) {
+    loved[userName].push(choreName);
+  }
+  lovedSelect.value = "";
+  renderPreferences();
+});
+
+hatedSelect.addEventListener("change", () => {
+  const userName = prefUserSelect.value;
+  const choreName = hatedSelect.value;
+  if (!userName || !choreName) return;
+
+  if (!hated[userName]) hated[userName] = [];
+  if (!hated[userName].includes(choreName)) {
+    hated[userName].push(choreName);
+  }
+  hatedSelect.value = "";
+  renderPreferences();
+});
+
+
 // Back button -> return to input view
 backBtn.addEventListener("click", () => {
   scheduleView.style.display = "none";
   inputView.style.display = "block";
 });
 
+
+//initialize
 renderDifficultyMatrix();
 renderPreferences();
